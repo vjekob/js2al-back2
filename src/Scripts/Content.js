@@ -16,7 +16,9 @@ function getLogLine() {
     };
 }
 
-function getALMethod(name) {
+function getALMethod(name, SKIP_IF_BUSY) {
+    const nav = Microsoft.Dynamics.NAV.GetEnvironment();
+
     return (...args) => {
         let result;
 
@@ -25,6 +27,11 @@ function getALMethod(name) {
         }
 
         return new Promise(resolve => {
+            if (SKIP_IF_BUSY && nav.Busy) {
+                resolve(SKIP_IF_BUSY);
+                return;
+            }
+
             Microsoft.Dynamics.NAV.InvokeExtensibilityMethod(name, args, false, () => {
                 delete window.OnInvokeResult;
                 resolve(result);
@@ -36,28 +43,25 @@ function getALMethod(name) {
 function start() {
     // Modify these to change behavior!
     const INTERVAL = 1000;
-    const SKIP_IF_BUSY = true;
+    const SKIP_TOKEN = Symbol(); // Change to false to skip
 
-    const nav = Microsoft.Dynamics.NAV.GetEnvironment();
     const logLine = getLogLine();
-    const makeBusy = getALMethod("MakeBusy");
+    const makeBusy = getALMethod("MakeBusy", SKIP_TOKEN);
 
     logLine("Initializing event calling demo.", true);
 
     setInterval(
         async () => {
 
-            let busy = nav.Busy ? "AL is busy. " : "";
-            let skipped = busy && SKIP_IF_BUSY;
-            let info = skipped
-                ? "This method invocation is skipped."
-                : "Invoking method";
-            let line = logLine(busy + info);
-
-            if (!skipped) {
-                await makeBusy();
-                line.update(" => response received.", "#0f0");
+            let line = logLine("Invoking method");
+            
+            let result = await makeBusy();
+            if (result === SKIP_TOKEN) {
+                line.update(" => This method invocation is skipped.", "#ff0");
+                return;
             }
+
+            line.update(" => response received.", "#0f0");
 
         }, INTERVAL);
 }
