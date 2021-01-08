@@ -1,0 +1,13 @@
+* {
+    font-family: Consolas, monospace;
+}
+
+body {
+    background-color: #111;
+}
+
+div#controlAddIn {
+    padding: 1em;
+    color: white;
+    overflow-y: auto;
+}
